@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserva de Citas | Barbería & Estilo</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="card-container">
+        <!-- CABECERA -->
+        <div class="business-header">
+            <div class="logo-wrapper">
+                <img src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=150&auto=format&fit=crop&q=80" alt="Logo" class="logo">
+            </div>
+            <h1 class="business-name">The Gentleman Barber</h1>
+            <p class="business-tagline">Apartado de Cupos en Tiempo Real</p>
+        </div>
+
+        <!-- FORMULARIO DE RESERVA PARA CLIENTES -->
+        <div id="seccion-cliente">
+            <div class="form-group">
+                <label for="nombre">Tu Nombre y Apellido</label>
+                <input type="text" id="nombre" placeholder="Ej. Carlos Pérez">
+            </div>
+
+            <div class="form-group">
+                <label for="fecha">Selecciona el Día</label>
+                <input type="date" id="fecha" onchange="cargarHorasDisponibles()">
+            </div>
+
+            <div class="form-group">
+                <label for="servicio">Selecciona el Servicio</label>
+                <select id="servicio">
+                    <option value="">Cargando servicios...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="hora">Horarios Disponibles</label>
+                <select id="hora">
+                    <option value="">Primero selecciona una fecha...</option>
+                </select>
+            </div>
+
+            <button class="btn-whatsapp" onclick="enviarReserva()">
+                <span>Confirmar Cita por WhatsApp</span>
+                <span>💬</span>
+            </button>
+
+            <!-- GESTIÓN DE CITAS PROPIAS -->
+            <div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+                <p style="font-size: 11px; color: #94a3b8; text-align: center; margin-bottom: 8px;">¿Ya tienes una cita y deseas cambiarla o cancelarla?</p>
+                <input type="text" id="buscarNombre" placeholder="Tu nombre registrado" style="width:100%; padding: 10px; background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: white; font-size: 13px; margin-bottom: 8px; box-sizing: border-box;">
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="buscarYModificarCita()" style="flex: 1; padding: 8px; background: #3b82f6; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; font-size: 11px;">Modificar</button>
+                    <button onclick="cancelarCita()" style="flex: 1; padding: 8px; background: #ef4444; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; font-size: 11px;">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL DE ADMINISTRACIÓN -->
+        <div id="seccion-admin" style="display: none; margin-top: 15px; border-top: 1px solid rgba(245, 158, 11, 0.3); padding-top: 15px;">
+            <h3 style="font-size: 14px; color: #f59e0b; margin-bottom: 12px; text-align: center;">🔒 Panel de Administración</h3>
+            
+            <!-- Bloquear Días/Horas -->
+            <div class="form-group">
+                <label for="fechaAdmin">Bloquear Día / Hora</label>
+                <input type="date" id="fechaAdmin">
+            </div>
+            <div class="form-group">
+                <select id="horaAdmin">
+                    <option value="TODAS">Bloquear Día Completo (Cerrado)</option>
+                    <option value="10:00 AM">10:00 AM</option>
+                    <option value="11:00 AM">11:00 AM</option>
+                    <option value="12:00 PM">12:00 PM</option>
+                    <option value="02:00 PM">02:00 PM</option>
+                    <option value="03:00 PM">03:00 PM</option>
+                    <option value="04:00 PM">04:00 PM</option>
+                    <option value="05:00 PM">05:00 PM</option>
+                    <option value="06:30 PM">06:30 PM</option>
+                </select>
+            </div>
+            <button onclick="bloquearHorarioAdmin()" style="width: 100%; padding: 10px; background: #d97706; border: none; border-radius: 10px; color: white; font-weight: 700; cursor: pointer; font-size: 12px; margin-bottom: 15px;">Bloquear Cupo</button>
+
+            <!-- Crear Nuevo Servicio -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; margin-bottom: 12px;">
+                <label style="display: block; font-size: 12px; text-transform: uppercase; color: #cbd5e1; margin-bottom: 6px; font-weight: 600;">Añadir Nuevo Servicio</label>
+                <input type="text" id="nuevoServicioNombre" placeholder="Nombre (Ej. Corte + Mascarilla)" style="width:100%; padding: 10px; background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: white; font-size: 13px; margin-bottom: 8px; box-sizing: border-box;">
+                <input type="text" id="nuevoServicioPrecio" placeholder="Precio (Ej. $1,000 DOP)" style="width:100%; padding: 10px; background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: white; font-size: 13px; margin-bottom: 8px; box-sizing: border-box;">
+                <button onclick="crearServicio()" style="width: 100%; padding: 10px; background: #10b981; border: none; border-radius: 10px; color: white; font-weight: 700; cursor: pointer; font-size: 12px;">Guardar Nuevo Servicio</button>
+            </div>
+
+            <!-- Listado de servicios existentes para eliminar -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; margin-bottom: 15px;">
+                <label style="display: block; font-size: 12px; text-transform: uppercase; color: #cbd5e1; margin-bottom: 6px; font-weight: 600;">Eliminar Servicio</label>
+                <select id="listaServiciosAdmin" style="width: 100%; padding: 10px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; color: white; font-size: 13px; margin-bottom: 8px;">
+                    <!-- Se cargan dinámicamente -->
+                </select>
+                <button onclick="eliminarServicioSeleccionado()" style="width: 100%; padding: 10px; background: #ef4444; border: none; border-radius: 10px; color: white; font-weight: 700; cursor: pointer; font-size: 12px;">Eliminar Servicio Seleccionado</button>
+            </div>
+
+            <button onclick="cambiarVista(false)" style="width: 100%; padding: 8px; background: transparent; border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; color: #94a3b8; cursor: pointer; font-size: 11px;">Volver al modo cliente</button>
+        </div>
+
+        <!-- ACCESO DUEÑO -->
+        <div style="text-align: center; margin-top: 15px;">
+            <button onclick="activarAdmin()" style="background: none; border: none; color: #64748b; font-size: 10px; cursor: pointer; text-decoration: underline;">Acceso Dueño / Barber</button>
+        </div>
+
+        <div class="footer-brand">
+            Powered by <span>NFC & Cloud Solutions RD</span>
+        </div>
+    </div>
+
+    <script type="module" src="javaScript.js"></script>
+</body>
+</html>
