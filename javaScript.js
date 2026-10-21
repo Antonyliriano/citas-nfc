@@ -28,7 +28,6 @@ window.onload = function() {
     cargarHorasDisponibles();
 };
 
-// Cargar servicios dinámicos desde Firestore
 async function cargarServicios() {
     const selectServicio = document.getElementById('servicio');
     const selectServicioAdmin = document.getElementById('listaServiciosAdmin');
@@ -41,7 +40,6 @@ async function cargarServicios() {
         selectServicio.innerHTML = "";
         
         if (querySnapshot.empty) {
-            // Servicios por defecto si la base de datos está vacía
             const defs = ["Corte Ejecutivo - $500 DOP", "Corte + Barba - $800 DOP"];
             defs.forEach(s => {
                 const opt = document.createElement('option');
@@ -55,13 +53,11 @@ async function cargarServicios() {
             const data = documento.data();
             const textoServicio = `${data.nombre} - ${data.precio}`;
             
-            // Para el cliente
             const opt = document.createElement('option');
             opt.value = textoServicio;
             opt.textContent = textoServicio;
             selectServicio.appendChild(opt);
 
-            // Para el panel admin (guardamos el ID del documento en el value para borrarlo fácil)
             if(selectServicioAdmin) {
                 const optAdmin = document.createElement('option');
                 optAdmin.value = documento.id;
@@ -74,7 +70,6 @@ async function cargarServicios() {
     }
 }
 
-// Crear nuevo servicio desde el panel de admin
 window.crearServicio = async function() {
     const nombre = document.getElementById('nuevoServicioNombre').value.trim();
     const precio = document.getElementById('nuevoServicioPrecio').value.trim();
@@ -95,7 +90,6 @@ window.crearServicio = async function() {
     }
 };
 
-// Eliminar servicio seleccionado
 window.eliminarServicioSeleccionado = async function() {
     const selectAdmin = document.getElementById('listaServiciosAdmin');
     const idServicio = selectAdmin.value;
@@ -116,7 +110,6 @@ window.eliminarServicioSeleccionado = async function() {
     }
 };
 
-// Cargar horas disponibles
 window.cargarHorasDisponibles = async function() {
     const fechaSeleccionada = document.getElementById('fecha').value;
     const selectHora = document.getElementById('hora');
@@ -134,7 +127,9 @@ window.cargarHorasDisponibles = async function() {
         querySnapshot.forEach((documento) => {
             const data = documento.data();
             if (data.tipo === "bloqueo" && data.hora === "TODAS") diaBloqueado = true;
-            horasOcupadas.push(data.hora);
+            if (data.tipo !== "bloqueo" || data.hora !== "TODAS") {
+                horasOcupadas.push(data.hora);
+            }
         });
 
         selectHora.innerHTML = ""; 
@@ -170,7 +165,6 @@ window.cargarHorasDisponibles = async function() {
     }
 };
 
-// Registrar cita
 window.enviarReserva = async function() {
     const nombre = document.getElementById('nombre').value.trim();
     const fecha = document.getElementById('fecha').value;
@@ -183,9 +177,16 @@ window.enviarReserva = async function() {
     }
 
     try {
-        await addDoc(collection(db, "citas"), { nombre, fecha, servicio, hora, tipo: "reserva" });
+        await addDoc(collection(db, "citas"), { 
+            nombre: nombre, 
+            nombreMinuscula: nombre.toLowerCase(), 
+            fecha, 
+            servicio, 
+            hora, 
+            tipo: "reserva" 
+        });
 
-        const telefonoNegocio = "8293790241"; // Cambiar por el real
+        const telefonoNegocio = "18090000000"; // Cambiar por el real
         const mensaje = `Hola! Nueva cita:%0A*Cliente:* ${nombre}%0A*Fecha:* ${fecha}%0A*Servicio:* ${servicio}%0A*Hora:* ${hora}`;
 
         alert("¡Cita registrada con éxito!");
@@ -195,7 +196,81 @@ window.enviarReserva = async function() {
     }
 };
 
-// Panel de Administración Acceso
+// Función unificada y segura para Cancelar Cita
+window.cancelarCita = async function() {
+    const nombreBuscado = document.getElementById('buscarNombre').value.trim().toLowerCase();
+    if (!nombreBuscado) { 
+        alert("Ingresa tu nombre registrado."); 
+        return; 
+    }
+
+    try {
+        const querySnapshot = await getDocs(collection(db, "citas"));
+        let encontradas = 0;
+
+        for (const documento of querySnapshot.docs) {
+            const data = documento.data();
+            const nombreDoc = data.nombre ? data.nombre.toLowerCase() : "";
+            const nombreMinDoc = data.nombreMinuscula || "";
+
+            if (nombreDoc === nombreBuscado || nombreMinDoc === nombreBuscado) {
+                encontradas++;
+                await deleteDoc(doc(db, "citas", documento.id));
+            }
+        }
+
+        if (encontradas === 0) {
+            alert("No se encontró ninguna cita activa con ese nombre exacto.");
+        } else {
+            alert("¡Cita cancelada con éxito! La hora ha quedado libre.");
+            document.getElementById('buscarNombre').value = "";
+            cargarHorasDisponibles();
+        }
+    } catch (error) {
+        console.error("Error al cancelar:", error);
+        alert("Hubo un error al intentar cancelar la cita.");
+    }
+};
+
+// Función para Modificar Cita (Borra la vieja y coloca el nombre en el formulario)
+window.buscarYModificarCita = async function() {
+    const nombreBuscado = document.getElementById('buscarNombre').value.trim().toLowerCase();
+    if (!nombreBuscado) { 
+        alert("Ingresa tu nombre registrado para modificar."); 
+        return; 
+    }
+
+    try {
+        const querySnapshot = await getDocs(collection(db, "citas"));
+        let encontradas = 0;
+        let nombreOriginal = "";
+
+        for (const documento of querySnapshot.docs) {
+            const data = documento.data();
+            const nombreDoc = data.nombre ? data.nombre.toLowerCase() : "";
+            const nombreMinDoc = data.nombreMinuscula || "";
+
+            if (nombreDoc === nombreBuscado || nombreMinDoc === nombreBuscado) {
+                encontradas++;
+                nombreOriginal = data.nombre;
+                await deleteDoc(doc(db, "citas", documento.id));
+            }
+        }
+
+        if (encontradas === 0) {
+            alert("No se encontró ninguna cita registrada con ese nombre.");
+        } else {
+            document.getElementById('nombre').value = nombreOriginal || document.getElementById('buscarNombre').value;
+            document.getElementById('buscarNombre').value = "";
+            alert("Cita anterior liberada. Selecciona tu nueva fecha y hora y vuelve a confirmar.");
+            cargarHorasDisponibles();
+        }
+    } catch (error) {
+        console.error("Error al modificar:", error);
+        alert("Hubo un error al procesar la modificación.");
+    }
+};
+
 window.activarAdmin = function() {
     const clave = prompt("Ingresa la contraseña de administrador:");
     if (clave === "1234") {
@@ -224,35 +299,4 @@ window.bloquearHorarioAdmin = async function() {
         document.getElementById('seccion-cliente').style.display = 'block';
         cargarHorasDisponibles();
     } catch (error) { alert("Error al bloquear."); }
-};
-
-window.cancelarCita = async function() {
-    const nombreBuscado = document.getElementById('buscarNombre').value.trim();
-    if (!nombreBuscado) { alert("Ingresa tu nombre."); return; }
-
-    try {
-        const q = query(collection(db, "citas"), where("nombre", "==", nombreBuscado));
-        const querySnapshot = await getDocs(q);
-        if (querySnapshot.empty) { alert("No se encontró cita."); return; }
-
-        querySnapshot.forEach(async (docRef) => { await deleteDoc(doc(db, "citas", docRef.id)); });
-        alert("Cita cancelada con éxito.");
-        location.reload();
-    } catch (error) { alert("Error al cancelar."); }
-};
-
-window.buscarYModificarCita = async function() {
-    const nombreBuscado = document.getElementById('buscarNombre').value.trim();
-    if (!nombreBuscado) { alert("Ingresa tu nombre."); return; }
-
-    try {
-        const q = query(collection(db, "citas"), where("nombre", "==", nombreBuscado));
-        const querySnapshot = await getDocs(q);
-        if (querySnapshot.empty) { alert("No se encontró cita."); return; }
-
-        querySnapshot.forEach(async (docRef) => { await deleteDoc(doc(db, "citas", docRef.id)); });
-        document.getElementById('nombre').value = nombreBuscado;
-        alert("Cita anterior liberada. Selecciona tu nueva fecha y hora.");
-        cargarHorasDisponibles();
-    } catch (error) { alert("Error al modificar."); }
 };
